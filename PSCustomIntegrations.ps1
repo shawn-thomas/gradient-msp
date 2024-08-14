@@ -1,75 +1,73 @@
 function Test-CyberAwareAPI {
-    if ($null -eq $ENV:API_KEY) {
-        throw 'API_KEY is required in .env'
+    if ($null -eq $ENV:PARTNER_API_KEY) {
+        throw 'PARTNER_API_KEY is required in .env'
     }
     if ($null -eq $ENV:API_BASE_URL) {
-        throw 'API_URL is required in .env'
+        throw 'API_BASE_URL is required in .env'
     }
 }
 
-# function Invoke-CyberAwareAPI {
-#     param(
-#         [string]$query
-#     )
-#     Begin {
+#This function makes a GET request to the /get-clients endpoint to retrieve a list of clients and client information.
+function Get-CyberAwareClients {
+    param (
+        [string]$ApiBaseUrl = $ENV:API_BASE_URL,
+        [string]$PartnerApiKey = $ENV:PARTNER_API_KEY
+    )
 
-#     }
-#     Process {
-#         $RequestHeaders = @{
-#             'x-api-key' = $ENV:API_KEY
-#             'Content-Type' = 'application/json'
-#         }
-#         $RequestURI = $ENV:API_BASE_URL
-#         $RequestBodyJSON = @{
-#             query = $query
-#         } | ConvertTo-Json
-#         $response = Invoke-WebRequest -Uri $RequestURI -Headers $RequestHeaders -Body $RequestBodyJSON -Method 'POST' | ConvertFrom-Json
-#         return $response
-#     }
-# }
+    $url = "$ApiBaseUrl/$PartnerApiKey/get-clients"
+    $headers = @{
+    'accept' = 'application/json';
+    }
 
-# function Get-CyberAwareClients {
-#     #
-#     param()
-#     Process {
-#         $Accounts = @{}
-#         $Query = 'query { company { id, externalId, clients { name, id } } }'
-#         $APIResponse = Invoke-usecureAPI -query $Query
-#         $AccountObjects = $APIResponse.data.company.clients
-#         foreach ($AccountObject in $AccountObjects) {
-#             $Account = @{
-#                 id = $AccountObject.id
-#                 name = $AccountObject.name
-#             }
-#             $Accounts[$AccountObject.id] = $Account
-#         }
-#         return $Accounts
-#     }
-# }
+    try {
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method 'GET'
 
-function Get-CyberAwareServices {
-    Process {
-        # There's no API for this, so we'll just return a static list.
+        $ClientsData = @{}
+        foreach ($client in $response.clients) {
+            $ClientData = [PSCustomObject]@{
+                id = $client.id
+                client = $client.name
+                pro = $client.pro
+                lite = $client.lite
+                free = $client.free
+                created_at = $client.created_at
+                referral = $client.referral
+                users = $client.users
+            }
+            $ClientsData += $ClientData
+        }
+        return $ClientsData
+    }
+    catch {
+        throw "Failed to retrieve clients: $_"
+    }
+}
+
+<#
+    There's no API for this, so we'll just return a static list of CyberAware services. The list includes the `Free`, `Lite`, and `Pro` service tiers.
         # https://kb.cyberaware.com/docs/cyber-aware-businessfree-acquisition-of-new-clients
         # https://kb.cyberaware.com/docs/cyber-aware-lite
         # https://kb.cyberaware.com/docs/cyber-aware-pro
+#>
+function Get-CyberAwareServices {
+    Process {
         $Services = [System.Collections.Generic.List[Object]]::new()
         $ServicesList = @(
             @{
                 Name = 'Free'
-                Description = 'Free resources, including 4 branded posters, basic policy templates, security guides, a Cyber Health Check, and a Cyber Risk Dashboard.'
+                Description = 'Basic resources including posters, templates, and a Cyber Risk Dashboard.'
                 Category = 'security'
                 Subcategory = 'privacy and security awareness training'
             },
             @{
                 Name = 'Lite'
-                Description = 'Lite offers optional Cyber Health Checks, Dashboards, and Toolkits, plus Security Awareness Posters, Training, and Reporting.'
+                Description = 'Includes Cyber Health Checks, Dashboards, Posters, and Training.'
                 Category = 'security'
                 Subcategory = 'privacy and security awareness training'
             },
             @{
                 Name = 'Pro'
-                Description = 'Pro offers optional Cyber Health Checks, Dashboards, and Toolkits, plus Security Awareness and Phishing Simulations, Templates, Automated Training, and Reporting.'
+                Description = 'Comprehensive services with simulations, templates, and automated training.'
                 Category = 'security'
                 Subcategory = 'privacy and security awareness training'
             }
@@ -79,14 +77,55 @@ function Get-CyberAwareServices {
     }
 }
 
-# Function Get-CyberAwareUsage {
-#     param(
-#         [string]$companyId
-#     )
-#     Process {
-#         $Query = "query { company(companyId: `"$companyId`") { plan { name, learnerCount, learnerLimit } } }"
-#         $APIResponse = Invoke-usecureAPI -query $Query
-#         $AccountUsage += $APIResponse.data.company.plan
-#         return $AccountUsage #Format is unique for each vendor, and how it is implemented in PSSyncUsage.ps1
-#     }
-# }
+# This function makes a GET request to the /get-usage endpoint to retrieve a clients high level usage statistics and individual client usage details.
+function Get-CyberAwareUsage {
+    param(
+        [string]$ApiBaseUrl = $ENV:API_BASE_URL,
+        [string]$PartnerApiKey = $ENV:PARTNER_API_KEY
+    )
+
+    $url = "$ApiBaseUrl/$PartnerApiKey/get-usage"
+    $headers = @{
+        'accept' = 'application/json'
+    }
+
+    try {
+        # make a GET request to the /get-usage endpoint
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method 'GET'
+
+        $ResultObject = [PSCustomObject]@{
+            Result = $response.Result
+            Totals = @()
+            ClientUsage = @()
+        }
+
+        foreach ($total in $response.totals) {
+            $UsageSummary = [PSCustomObject]@{
+                ProClients = $total.pro_clients
+                LiteClients = $total.lite_clients
+                FreeClients = $total.free_clients
+                ProLearners = $total.pro_learners
+                LiteLearners = $total.lite_learners
+                FreeLearners = $total.free_learners
+            }
+            $ResultObject.Totals += $UsageSummary
+        }
+
+        foreach ($usage in $response.client_usage) {
+            $ClientUsageDetail = [PSCustomObject]@{
+                ClientID = $usage.client_id
+                Type  = $usage.type
+                Learners = $usage.learners
+                MaxLearners = $usage.max_learners
+                CreatedDate = $usage.created_date
+            }
+            $ResultObject.ClientUsage += $ClientUsageDetail
+        }
+
+        return $ResultObject
+    }
+    catch {
+        throw "Failed to retrieve usage data: $_"
+    }
+}
+
