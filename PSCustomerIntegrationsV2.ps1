@@ -96,18 +96,18 @@ function Get-CyberAwareUsage {
         # make a GET request to the /get-usage endpoint
         $response = Invoke-RestMethod -Uri $url -Headers $headers -Method 'GET'
 
-        $ClientUsage = @{}
+        $ClientsUsage = @{}
 
         # this data maps closer to the 'usecure' template
         foreach ($usage in $response.client_usage) {
-            $ClientUsageDetail = [PSCustomObject]@{
+            $ClientUsageDetail = @{
                 CompanyId = $usage.client_id
                 Name  = $usage.type
                 LearnerCount = $usage.learners
                 LearnerLimit = $usage.max_learners
             }
 
-            $ClientsUsage += $ClientUsageDetail
+            $ClientsUsage[$usage.client_id] = $ClientUsageDetail
         }
 
         return $ClientsUsage
