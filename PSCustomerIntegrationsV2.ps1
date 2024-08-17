@@ -24,17 +24,18 @@ function Get-CyberAwareClients {
 
         $ClientsData = @{}
         foreach ($client in $response.clients) {
-            $ClientData = [PSCustomObject]@{
+            $ClientData = @{
+                # Only the 'id' and 'name' included to match the 'usecure' format
                 id = $client.id
-                client = $client.name
-                pro = $client.pro
-                lite = $client.lite
-                free = $client.free
-                created_at = $client.created_at
-                referral = $client.referral
-                users = $client.users
+                name = $client.name
+                # pro = $client.pro
+                # lite = $client.lite
+                # free = $client.free
+                # created_at = $client.created_at
+                # referral = $client.referral
+                # users = $client.users
             }
-            $ClientsData += $ClientData
+            $ClientsData[$client.id] += $ClientData
         }
         return $ClientsData
     }
@@ -100,10 +101,10 @@ function Get-CyberAwareUsage {
         # this data maps closer to the 'usecure' template
         foreach ($usage in $response.client_usage) {
             $ClientUsageDetail = [PSCustomObject]@{
-                ClientID = $usage.client_id
-                Type  = $usage.type
-                Learners = $usage.learners
-                MaxLearners = $usage.max_learners
+                CompanyId = $usage.client_id
+                Name  = $usage.type
+                LearnerCount = $usage.learners
+                LearnerLimit = $usage.max_learners
             }
 
             $ClientsUsage += $ClientUsageDetail
