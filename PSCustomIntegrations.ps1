@@ -77,7 +77,8 @@ function Get-CyberAwareServices {
     }
 }
 
-# This function makes a GET request to the /get-usage endpoint to retrieve a clients high level usage statistics and individual client usage details.
+# This function sends a GET request to the /get-usage endpoint of the CyberAware API to fetch usage data for clients associated with the partner
+
 function Get-CyberAwareUsage {
     param(
         [string]$ApiBaseUrl = $ENV:API_BASE_URL,
