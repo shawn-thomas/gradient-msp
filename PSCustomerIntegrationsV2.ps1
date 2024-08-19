@@ -35,7 +35,7 @@ function Get-CyberAwareClients {
                 # referral = $client.referral
                 # users = $client.users
             }
-            $ClientsData[$client.id] += $ClientData
+            $ClientsData[$client.id] = $ClientData
         }
         return $ClientsData
     }
